@@ -3,7 +3,9 @@ package com.vag.voxreminder.service;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
@@ -14,7 +16,9 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
+import com.vag.voxreminder.R;
 import com.vag.voxreminder.db.DAO;
+import com.vag.voxreminder.receiver.BootupReceiver;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -29,6 +33,11 @@ import java.util.Locale;
 public class BackgroundService extends Service {
 
     final private String TAG = "BackgroundService";
+
+    final private int DAILY_IN_HOURS = 24;
+    final private int WEEKLY_IN_HOURS = 168;
+    final private int MONTHLY_IN_HOURS = 720; //30 days
+    final private int YEARLY_IN_HOURS = 8760; //not leap
 
     private TextToSpeech tts;
     private boolean isOn;
@@ -156,7 +165,24 @@ public class BackgroundService extends Service {
         cursor.close();
     }
 
-    private void updateConfiguration() {
+    private void updateAlarms() {
+        //TODO:add new AlarmManager when config changes
+
+        //if alarm present, use this:
+        ComponentName receiver = new ComponentName(getApplicationContext(), BootupReceiver.class);
+        PackageManager pm = getApplicationContext().getPackageManager();
+
+        pm.setComponentEnabledSetting(receiver,
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                PackageManager.DONT_KILL_APP);
+        //if not present:
+        //ComponentName receiver = new ComponentName(getApplicationContext(), BootupReceiver.class);
+        //PackageManager pm = getApplicationContext().getPackageManager();
+
+        pm.setComponentEnabledSetting(receiver,
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP);
+        //end
 
     }
 
@@ -173,6 +199,18 @@ public class BackgroundService extends Service {
             l += HOUR_IN_MS; // start at next hour
         }
         am.setRepeating(AlarmManager.RTC_WAKEUP, l, HOUR_IN_MS, sender); // 86400000
+
+
+        // Set the alarm to start at 8:30 a.m.
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(System.currentTimeMillis());
+        calendar.set(Calendar.HOUR_OF_DAY, 8);
+        calendar.set(Calendar.MINUTE, 30);
+
+        // setRepeating() lets you specify a precise custom interval--in this case,
+        // 20 minutes.
+        am.setRepeating(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(),
+                1000 * 60 * 20, sender);
     }
 
     private void startTTS() {
